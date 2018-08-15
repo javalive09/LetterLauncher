@@ -65,9 +65,12 @@ public class AppModelAdapter extends RecyclerView.Adapter<AppModelAdapter.Holder
     @Override
     public void onClick(View view) {
         AppModel appModel = (AppModel) view.getTag();
-        Intent intent = new Intent();
-        intent.setComponent(appModel.getComponentName());
-        view.getContext().startActivity(intent);
+        Intent intent = view.getContext().getPackageManager().
+                getLaunchIntentForPackage(appModel.getApplicationPackageName());
+        if (intent != null) {
+            intent.setComponent(appModel.getComponentName());
+            view.getContext().startActivity(intent);
+        }
     }
 
     @Override
@@ -137,6 +140,8 @@ public class AppModelAdapter extends RecyclerView.Adapter<AppModelAdapter.Holder
                     .item_icon_height_down);
             downLayoutParams.width = itemView.getContext().getResources().getDimensionPixelOffset(R.dimen
                     .item_icon_width_down);
+            downLayoutParams.leftMargin = itemView.getContext().getResources().getDimensionPixelOffset(R.dimen.item_icon_margin_left);
+            downLayoutParams.topMargin = itemView.getContext().getResources().getDimensionPixelOffset(R.dimen.item_icon_margin_top);
             icon.setOnTouchListener(onTouchListener);
         }
 
