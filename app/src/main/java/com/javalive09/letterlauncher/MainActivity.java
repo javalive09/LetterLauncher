@@ -6,12 +6,16 @@ import java.util.List;
 import java.util.Map;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
@@ -28,6 +32,7 @@ public class MainActivity extends Activity {
     private AppGroupAdapter appGroupAdapter;
     private LinearLayoutManager linearLayoutManager;
     private List<AppGroup> groupDataList;
+    private AlertDialog defaultLauncherDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +44,60 @@ public class MainActivity extends Activity {
     protected void onPostResume() {
         super.onPostResume();
         refreshLetterRecyclerViewColor();
+        if (!isDefaultLauncher()) {
+            showDialog();
+        }
+    }
+
+    private void showDialog() {
+        if (defaultLauncherDialog == null) {
+            AlertDialog.Builder builder =
+                    new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
+            builder.setTitle(R.string.app_name);
+            builder.setMessage(R.string.set_default_launcher);
+            builder.setIcon(R.mipmap.ic_launcher);
+            builder.setPositiveButton(R.string.set_default_launcher_positive, new DialogInterface.OnClickListener() {
+
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    setDefaultLauncher();
+                    defaultLauncherDialog = null;
+                }
+            });
+            builder.setNegativeButton(R.string.set_default_launcher_negative, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    defaultLauncherDialog = null;
+                }
+            });
+            defaultLauncherDialog = builder.create();
+        }
+        if (!defaultLauncherDialog.isShowing()) {
+            defaultLauncherDialog.show();
+        }
+    }
+
+    private boolean isDefaultLauncher() {
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo resolveInfo = getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        String currentHomePackage = resolveInfo.activityInfo.packageName;
+        if (TextUtils.equals(currentHomePackage, getPackageName())) {
+            return true;
+        }
+        return false;
+    }
+
+    private void setDefaultLauncher() {
+        PackageManager packageManager = getPackageManager();
+        ComponentName componentName = new ComponentName(getApplicationContext(), MainActivity.class);
+        packageManager.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
+        Intent selector = new Intent(Intent.ACTION_MAIN);
+        selector.addCategory(Intent.CATEGORY_HOME);
+        selector.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(selector);
+        packageManager.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_DEFAULT, PackageManager.DONT_KILL_APP);
+
     }
 
     private void initMainView() {
