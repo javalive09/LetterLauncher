@@ -16,6 +16,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -75,6 +76,7 @@ public class AppModelAdapter extends RecyclerView.Adapter<AppModelAdapter.Holder
 
     @Override
     public boolean onLongClick(final View view) {
+        final ViewParent appGroupRecyclerView = view.getParent().getParent().getParent().getParent();
         final AppModel appModel = (AppModel) view.getTag();
         AlertDialog.Builder builder =
                 new AlertDialog.Builder(view.getContext(), android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
@@ -109,8 +111,14 @@ public class AppModelAdapter extends RecyclerView.Adapter<AppModelAdapter.Holder
                 SharedPreferenceUtil.putBoolean(appModel.context, SharedPreferenceUtil.FAVORITE, appModel
                         .getFavoriteKey(), !isFavorite);
             }
+        });
+        builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialogInterface) {
+                ((AppGroupRecyclerView) appGroupRecyclerView).setScrollEnable(true);
+            }
         }).show();
-
+        ((AppGroupRecyclerView) appGroupRecyclerView).setScrollEnable(false);
         return true;
     }
 
