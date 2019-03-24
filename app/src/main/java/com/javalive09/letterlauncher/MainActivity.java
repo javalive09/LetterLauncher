@@ -3,36 +3,35 @@ package com.javalive09.letterlauncher;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+
+import com.github.promeg.pinyinhelper.Pinyin;
+import com.javalive09.letterlauncher.adapter.AppGroupsAdapter;
+import com.javalive09.letterlauncher.databinding.ActivityMainLayoutBinding;
+import com.javalive09.letterlauncher.mode.AppGroup;
+import com.javalive09.letterlauncher.mode.AppModel;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
-    private static final String FAVORITE_LETTER = "★️";
-    private LetterRecyclerView letterRecyclerView;
-    private AppGroupAdapter appGroupAdapter;
+    private AppGroupsAdapter appGroupAdapter;
     private LinearLayoutManager linearLayoutManager;
     private List<AppGroup> groupDataList;
-    private AlertDialog defaultLauncherDialog;
+    private ActivityMainLayoutBinding activityMainLayoutBinding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,214 +43,105 @@ public class MainActivity extends Activity {
     protected void onPostResume() {
         super.onPostResume();
         refreshLetterRecyclerViewColor();
-        if (!isDefaultLauncher()) {
-            showDialog();
-        }
-    }
-
-    private void showDialog() {
-        if (defaultLauncherDialog == null) {
-            AlertDialog.Builder builder =
-                    new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
-            builder.setTitle(R.string.app_name);
-            builder.setMessage(R.string.set_default_launcher);
-            builder.setIcon(R.mipmap.ic_launcher);
-            builder.setPositiveButton(R.string.set_default_launcher_positive, new DialogInterface.OnClickListener() {
-
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    setDefaultLauncher();
-                    defaultLauncherDialog = null;
-                }
-            });
-            builder.setNegativeButton(R.string.set_default_launcher_negative, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    defaultLauncherDialog = null;
-                }
-            });
-            defaultLauncherDialog = builder.create();
-        }
-        if (!defaultLauncherDialog.isShowing()) {
-            defaultLauncherDialog.show();
-        }
-    }
-
-    private boolean isDefaultLauncher() {
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.addCategory(Intent.CATEGORY_HOME);
-        ResolveInfo resolveInfo = getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
-        String currentHomePackage = resolveInfo.activityInfo.packageName;
-        if (TextUtils.equals(currentHomePackage, getPackageName())) {
-            return true;
-        }
-        return false;
-    }
-
-    private void setDefaultLauncher() {
-        PackageManager packageManager = getPackageManager();
-        ComponentName componentName = new ComponentName(getApplicationContext(), MainActivity.class);
-        packageManager.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
-        Intent selector = new Intent(Intent.ACTION_MAIN);
-        selector.addCategory(Intent.CATEGORY_HOME);
-        selector.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(selector);
-        packageManager.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_DEFAULT, PackageManager.DONT_KILL_APP);
-
     }
 
     private void initMainView() {
         groupDataList = getGroupDataList();
-        setContentView(R.layout.activity_main_layout);
-        RecyclerView groupListView = (RecyclerView) findViewById(R.id.app_group_list);
-        final TextView letterHint = (TextView) findViewById(R.id.letter_hint);
-        letterRecyclerView = (LetterRecyclerView) findViewById(R.id.letter_list);
-        appGroupAdapter = new AppGroupAdapter(groupDataList);
-        groupListView.setAdapter(appGroupAdapter);
+        activityMainLayoutBinding = DataBindingUtil.setContentView(this, R.layout.activity_main_layout);
+        appGroupAdapter = new AppGroupsAdapter(groupDataList);
+        activityMainLayoutBinding.appGroupList.setAdapter(appGroupAdapter);
         linearLayoutManager = new LinearLayoutManager(MainActivity.this);
-        groupListView.setLayoutManager(linearLayoutManager);
-        letterRecyclerView.setData(groupDataList).setTouchLetterListener(new LetterRecyclerView.TouchLetterListener() {
-            @Override
-            public void onShow(String currentLetter, int index) {
-                letterHint.setVisibility(View.VISIBLE);
-                letterHint.setText(currentLetter);
-                letterRecyclerView.setBackgroundResource(R.color.letter_hint_bg);
-                linearLayoutManager.scrollToPositionWithOffset(index, 0);
-                Logger.d("peter", " letter:" + currentLetter);
-            }
+        activityMainLayoutBinding.appGroupList.setLayoutManager(linearLayoutManager);
+        activityMainLayoutBinding.letterList.setData(groupDataList)
+                .setTouchLetterListener(new LetterRecyclerView.TouchLetterListener() {
+                    @Override
+                    public void onShow(String currentLetter, int index) {
+                        activityMainLayoutBinding.letterHint.setVisibility(View.VISIBLE);
+                        activityMainLayoutBinding.letterHint.setText(currentLetter);
+                        activityMainLayoutBinding.letterList.setBackgroundResource(R.color.letter_hint_bg);
+                        linearLayoutManager.scrollToPositionWithOffset(index, 0);
+                    }
 
+                    @Override
+                    public void onHide() {
+                        activityMainLayoutBinding.letterHint.setVisibility(View.GONE);
+                        activityMainLayoutBinding.letterList.setBackground(null);
+                    }
+                }).build(getApplicationContext());
+        activityMainLayoutBinding.appGroupList.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
-            public void onHide() {
-                letterHint.setVisibility(View.GONE);
-                letterRecyclerView.setBackground(null);
-            }
-        }).build(getApplicationContext());
-        groupListView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 refreshLetterRecyclerViewColor();
             }
         });
         registerReceiver();
-        SharedPreferenceUtil.registerListener(getApplicationContext(), SharedPreferenceUtil.FAVORITE,
-                onSharedPreferenceChangeListener);
     }
 
     private void refreshLetterRecyclerViewColor() {
         final int firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
         final int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
-        Logger.d("peter", "firstVisibleItem:" + firstVisibleItem + " ;lastVisibleItem:" +
-                lastVisibleItem);
-        letterRecyclerView.refreshItemColor(firstVisibleItem, lastVisibleItem);
+        activityMainLayoutBinding.letterList.refreshItemColor(firstVisibleItem, lastVisibleItem);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(broadcastReceiver);
-        SharedPreferenceUtil.unregisterListener(getApplicationContext(), SharedPreferenceUtil.FAVORITE,
-                onSharedPreferenceChangeListener);
     }
-
-    private final SharedPreferences.OnSharedPreferenceChangeListener onSharedPreferenceChangeListener =
-            new SharedPreferences.OnSharedPreferenceChangeListener() {
-                @Override
-                public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                    if (sharedPreferences.contains(key)) {
-                        boolean isFavorite = sharedPreferences.getBoolean(key, false);
-                        String[] strings = key.split(":");
-                        if (strings.length == 2) {
-                            String packageName = strings[0];
-                            String cls = strings[1];
-                            String action = isFavorite ? Intent.ACTION_PACKAGE_ADDED : Intent.ACTION_PACKAGE_REMOVED;
-                            refresh(action, packageName, cls);
-                        }
-                    }
-                }
-            };
 
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             Uri uri = intent.getData();
-            if (uri != null) {
+            String action = intent.getAction();
+            if (uri != null && !TextUtils.isEmpty(action)) {
                 String packageName = uri.getSchemeSpecificPart();
-                refresh(intent.getAction(), packageName);
+                switch (action) {
+                    case Intent.ACTION_PACKAGE_ADDED:
+                    case Intent.ACTION_EXTERNAL_APPLICATIONS_AVAILABLE:
+                        installGroupList(packageName, groupDataList);
+                        sort(groupDataList);
+                        refresh(groupDataList);
+                        break;
+                    case Intent.ACTION_PACKAGE_REMOVED:
+                    case Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE:
+                        List<AppGroup> removeAppGroupList = new ArrayList<>();
+                        List<AppModel> removeAppModelList = new ArrayList<>();
+                        for (AppGroup appGroup : groupDataList) {
+                            removeAppModelList.clear();
+                            for (AppModel appModel : appGroup.getAppModelList()) {
+                                if (TextUtils.equals(appModel.getInfo().activityInfo.packageName, packageName)) {
+                                    removeAppModelList.add(appModel);
+                                    break;
+                                }
+                            }
+                            for (AppModel appModel : removeAppModelList) {
+                                appGroup.getAppModelList().remove(appModel);
+                            }
+                            if (appGroup.getAppModelList().size() == 0) {
+                                removeAppGroupList.add(appGroup);
+                            }
+                        }
+                        for (AppGroup appGroup : removeAppGroupList) {
+                            groupDataList.remove(appGroup);
+                        }
+                        sort(groupDataList);
+                        refresh(groupDataList);
+                        break;
+                    case Intent.ACTION_PACKAGE_CHANGED:
+                        break;
+                    default:
+                        break;
+                }
+
             }
         }
     };
 
-    private void refresh(String action, String packageName) {
-        refresh(action, packageName, null);
-    }
-
-    private void refresh(String action, String packageName, String cls) {
-        switch (action) {
-            case Intent.ACTION_PACKAGE_ADDED:
-            case Intent.ACTION_EXTERNAL_APPLICATIONS_AVAILABLE:
-                if (TextUtils.isEmpty(cls)) {// install
-                    Map<String, ?> favorites =
-                            SharedPreferenceUtil.getAll(getApplicationContext(), SharedPreferenceUtil.FAVORITE);
-                    installGroupList(favorites, packageName, groupDataList);
-                } else {// favorite
-                    Map<String, ?> favorites =
-                            SharedPreferenceUtil.getAll(getApplicationContext(), SharedPreferenceUtil.FAVORITE);
-                    installGroupList(favorites, packageName, groupDataList);
-                }
-                sort(groupDataList);
-                refresh(groupDataList);
-                break;
-            case Intent.ACTION_PACKAGE_REMOVED:
-            case Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE:
-                if (TextUtils.isEmpty(cls)) {// uninstall
-                    List<AppGroup> removeAppGroupList = new ArrayList<>();
-                    List<AppModel> removeAppModelList = new ArrayList<>();
-                    for (AppGroup appGroup : groupDataList) {
-                        removeAppModelList.clear();
-                        for (AppModel appModel : appGroup.appModelList) {
-                            if (TextUtils.equals(appModel.getApplicationPackageName(), packageName)) {
-                                removeAppModelList.add(appModel);
-                                break;
-                            }
-                        }
-                        for (AppModel appModel : removeAppModelList) {
-                            appGroup.appModelList.remove(appModel);
-                            SharedPreferenceUtil
-                                    .removeKey(getApplicationContext(), SharedPreferenceUtil.FAVORITE, appModel
-                                            .getFavoriteKey());
-                        }
-                        if (appGroup.appModelList.size() == 0) {
-                            removeAppGroupList.add(appGroup);
-                        }
-                    }
-                    for (AppGroup appGroup : removeAppGroupList) {
-                        groupDataList.remove(appGroup);
-                    }
-
-                } else {// favorite
-                    AppGroup favoriteAppGroup = groupDataList.get(groupDataList.size() - 1);
-                    ArrayList<AppModel> tempAppModelList = new ArrayList<>(favoriteAppGroup.appModelList);
-                    for (AppModel appModel : tempAppModelList) {
-                        if (TextUtils.equals(appModel.getApplicationPackageName(), packageName)) {
-                            favoriteAppGroup.appModelList.remove(appModel);
-                        }
-                    }
-                    if (favoriteAppGroup.appModelList.size() == 0) {
-                        groupDataList.remove(favoriteAppGroup);
-                    }
-                }
-                sort(groupDataList);
-                refresh(groupDataList);
-                break;
-            case Intent.ACTION_PACKAGE_CHANGED:
-                Logger.d("peter", Intent.ACTION_PACKAGE_CHANGED);
-                break;
-        }
-    }
-
     private void refresh(List<AppGroup> groupDataList) {
-        appGroupAdapter.refreshData(groupDataList);
-        letterRecyclerView.refresh(groupDataList);
-        letterRecyclerView.post(refreshLetterRecyclerViewColor);
+        appGroupAdapter.setList(groupDataList);
+        appGroupAdapter.notifyDataSetChanged();
+        activityMainLayoutBinding.letterList.refresh(groupDataList);
+        activityMainLayoutBinding.letterList.post(refreshLetterRecyclerViewColor);
     }
 
     private Runnable refreshLetterRecyclerViewColor = new Runnable() {
@@ -277,10 +167,9 @@ public class MainActivity extends Activity {
     private List<AppGroup> getGroupDataList() {
         List<ApplicationInfo> applicationInfoList = getPackageManager().getInstalledApplications(0);
         List<AppGroup> groupList = new ArrayList<>();
-        Map<String, ?> favorites = SharedPreferenceUtil.getAll(getApplicationContext(), SharedPreferenceUtil.FAVORITE);
         for (int i = 0, len = applicationInfoList.size(); i < len; i++) {
             String packageName = applicationInfoList.get(i).packageName;
-            installGroupList(favorites, packageName, groupList);
+            installGroupList(packageName, groupList);
         }
         sort(groupList);
         return groupList;
@@ -289,47 +178,58 @@ public class MainActivity extends Activity {
     private void sort(List<AppGroup> groupDataList) {
         Collections.sort(groupDataList);
         for (AppGroup appGroup : groupDataList) {
-            Collections.sort(appGroup.appModelList);
+            Collections.sort(appGroup.getAppModelList());
         }
     }
 
-    private void installGroupList(Map<String, ?> favorites, String packageName, List<AppGroup> groupList) {
+    private void installGroupList(String packageName, List<AppGroup> groupList) {
         if (!TextUtils.equals(getPackageName(), packageName)) {
             Intent intent = new Intent(Intent.ACTION_MAIN);
             intent.setPackage(packageName);
             intent.addCategory(Intent.CATEGORY_LAUNCHER);
             List<ResolveInfo> resolveInfoList = getPackageManager().queryIntentActivities(intent, 0);
             for (ResolveInfo info : resolveInfoList) {
-                AppModel appModel = new AppModel(this, info);
-                appModel.getIcon();
-                appModel.getLabel();
-                appModel.getLetter();
+                AppModel appModel = new AppModel();
+                appModel.setInfo(info);
+                appModel.setIcon(info.loadIcon(getPackageManager()));
+                appModel.setLabel(info.loadLabel(getPackageManager()).toString());
+                appModel.setLetter(getLetter(appModel));
+                appModel.setFavoriteKey(
+                        appModel.getInfo().activityInfo.packageName + ":" + appModel.getInfo().activityInfo.name);
                 installData(groupList, appModel);
-                if (favorites.containsKey(appModel.getFavoriteKey())) {
-                    Boolean isFavorite = (Boolean) favorites.get(appModel.getFavoriteKey());
-                    if (isFavorite) {
-                        AppModel appModelFavorite = new AppModel(appModel);
-                        appModelFavorite.setLetter(FAVORITE_LETTER);
-                        installData(groupList, appModelFavorite);
-                    }
-                }
             }
         }
+    }
+
+    public String getLetter(AppModel appModel) {
+        String letter;
+        String label = appModel.getLabel();
+        char c = label.charAt(0);
+        if (Pinyin.isChinese(c)) {
+            letter = String.valueOf(Pinyin.toPinyin(c).charAt(0));
+        } else if (Character.isLetter(c)) {
+            letter = String.valueOf(c).toUpperCase();
+        } else {
+            letter = AppModel.NO_LETTER;
+        }
+        return letter;
     }
 
     private void installData(List<AppGroup> groupList, AppModel appModel) {
         AppGroup currentGroupData = null;
         for (AppGroup groupData : groupList) {
-            if (TextUtils.equals(groupData.letter, appModel.getLetter())) {
+            if (TextUtils.equals(groupData.getLetter(), appModel.getLetter())) {
                 currentGroupData = groupData;
                 break;
             }
         }
         if (currentGroupData == null) {
-            currentGroupData = new AppGroup(appModel.getLetter(), appModel);
+            currentGroupData = new AppGroup();
+            currentGroupData.setLetter(appModel.getLetter());
+            currentGroupData.getAppModelList().add(appModel);
             groupList.add(currentGroupData);
-        } else if (!currentGroupData.appModelList.contains(appModel)) {
-            currentGroupData.appModelList.add(appModel);
+        } else if (!currentGroupData.getAppModelList().contains(appModel)) {
+            currentGroupData.getAppModelList().add(appModel);
         }
     }
 

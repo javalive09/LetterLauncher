@@ -2,6 +2,8 @@ package com.javalive09.letterlauncher;
 
 import java.util.List;
 
+import com.javalive09.letterlauncher.mode.AppGroup;
+
 import android.content.Context;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -115,7 +117,7 @@ public class LetterRecyclerView extends RecyclerView {
             View child = getChildAt(i);
             if (pointInView(child, x, y)) {
                 if (touchLetterListener != null) {
-                    String letter = groupDataList.get(i).letter;
+                    String letter = groupDataList.get(i).getLetter();
                     touchLetterListener.onShow(letter, i);
                 }
                 break;
@@ -154,7 +156,7 @@ public class LetterRecyclerView extends RecyclerView {
 
         @Override
         public void onBindViewHolder(Holder holder, int position) {
-            String letter = mGroupDataList.get(position).letter;
+            String letter = mGroupDataList.get(position).getLetter();
             holder.letter.setText(letter);
             holder.letter.setTextColor(normalColor);
         }
