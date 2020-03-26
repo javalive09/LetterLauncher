@@ -7,4 +7,3 @@
 ## 3.支持shortcut
 
 ## [apk下载](https://letterlauncher-1254131086.cos.ap-beijing.myqcloud.com/letterLauncher.apk)
-
